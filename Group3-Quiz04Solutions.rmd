@@ -286,45 +286,112 @@ UB is: $$0+1.555*\frac {1} {\sqrt{10}}=0.492$$.
 
 ## Question 6:
 
-blabla
-
 ```{r}
+plotInV6 <- function(size=100, mean=0,sigma=1) {
+  ints <- seq(1:size)
+  p1 <- seq(1:size)
+  p2 <- seq(1:size)
+  for (i in 1:size) {
+    x_bar <- mean(rnorm(10, mean=0, sd=1))
+    # calculate the upper bound and lower bound
+    p1[i] <- x_bar -1.555 * sigma / sqrt(10)
+    p2[i] <- x_bar + 1.555 * sigma / sqrt(10)
+  }
+  
+  # plot the true mean
+  plot(seq(1:size), rep(mean, size), type="l", xlab="sample size", ylab="mean", ylim=c(-1.5, 1.5))
 
-iter <- 100000
-count <- 0
-for(i in 1:iter){
-    sample <- rnorm(10, mean=0, sd=1)
-    if(mean(sample) > -0.492 & mean(sample) < 0.492){
-        count = count + 1
-    }
+  col <- rep(1, size)
+  # index those CIs that failed to cover the true mean and plot them with red color
+  index <- p1 > mean | p2 < mean
+  col[index] <- 2
+  
+  # plot the CI segments and points
+  segments(ints, p1, ints, p2, col=col)
+  points(ints, p1, pch=20)
+  points(ints, p2, pch=20)
+  
+  return((size-sum(index))/size) 
 }
-count/iter
+
+plotInV6(size=10^5)
 ```
 
-blabla
+Our simulation result is 0.88154 (suppose the size of 10^5 is big enough (by LLN)), which is quite close to the designed 0.88. This is because x_bar is also a normal distribution with mean of 0 and sd of $1\sqrt(10)$. Once we know the true $\sigma$, the result of question 6 makes sure that we can obtain a quite close cover probability by LLN. 
 
 ---
 
 ## Question 7:
 
-blabla
-
 ```{r}
+plotInV7 <- function(size=10^6, mean=0,sigma=1) {
+  ints <- seq(1:size)
+  p1 <- seq(1:size)
+  p2 <- seq(1:size)
+  for (i in 1:size) {
+    samples <- rnorm(10, mean=0, sd=1)
+    x_bar <- mean(samples)
+    sigma <- sd(samples)
+    p1[i] <- x_bar -1.555 * sigma / sqrt(10)
+    p2[i] <- x_bar + 1.555 * sigma / sqrt(10)
+  }
+  
+  plot(seq(1:size), rep(0, size), type="l", xlab="sample size", ylab="mean", ylim=c(-1.5, 1.5))
+  
+  col <- rep(1, size)
+  # index those CIs that failed to cover the true mean and plot them with red color
+  index <- p1 > mean | p2 < mean
+  col[index] <- 2
+  segments(ints, p1, ints, p2, col=col)
+  points(ints, p1, pch=20)
+  points(ints, p2, pch=20)
+  
+  return((size-sum(index))/size) 
+}
 
+plotInV7(size=10^5)
 ```
 
-blabla
+The result is 0.8472 which is a little far from the true cover probability 0.88. This is because we have a bad estimation of $\sigma$ with only 10 samples. 
 
 ---
 
 ## Question 8:
 
-blabla
-
 ```{r}
+plotInV8 <- function(size=10^5, sampleSize=10, mean=0,sigma=1) {
+  ints <- seq(1:size)
+  p1 <- seq(1:size)
+  p2 <- seq(1:size)
+  for (i in 1:size) {
+    samples <- rnorm(sampleSize, mean=0, sd=1)
+    x_bar <- mean(samples)
+    sigma <- sd(samples)
+    p1[i] <- x_bar -1.555 * sigma / sqrt(10)
+    p2[i] <- x_bar + 1.555 * sigma / sqrt(10)
+  }
+  
+  # plot(seq(1:size), rep(0, size), type="l", xlab="sample size", ylab="mean", ylim=c(-1.5, 1.5))
+  # col <- rep(1, size)
+  index <- p1 > mean | p2 < mean
+  # col[index] <- 2
+  # segments(ints, p1, ints, p2, col=col)
+  # points(ints, p1, pch=20)
+  # points(ints, p2, pch=20)
+  
+  return((size-sum(index))/size) 
+}
 
+sizes = seq(10, 20, 2)
+coverRates <- rep(0, length(sizes))
+for (i in 1:length(sizes)) {
+  coverRates[i] <- plotInV8(sampleSize=sizes[i])
+}
+
+plot(sizes, coverRates, type="o")
+lines(sizes, rep(0.88, length(sizes)), type="l")
 ```
 
-blabla
+By the analysis of question 7, a good estimation of $\sigma$ can promise a good cover probability of CI. For instance, we can increase the sample size in order to otain a better estimation of $\sigma$. The figure shows that as the samples size increases, we tends to obtain a better CI. When sample size equals to 12, we can obtain a CI with cover probability close to 0.88. Actually, there are several other ways to improve the cover probability of CI, such as enlarging the interval, or choosing a more reasonable model to make a good estimation on $\sigma$ with small sample size, e.g., student's T-distribution in this case. 
 
 ---
