@@ -1,0 +1,311 @@
+---
+title: "Quiz 07"
+author: "Group 1: Stanley, Fu, Dufendach, Lenert"
+date: "November 3, 2015"
+output: html_document
+---
+
+> Instructions:  At this point in the course, you know the instructions. Using the code from Quiz 4, call groupMaker.restricted(1103) to determine your groups.
+
+> Motivation:  The final weeks of the semester are focused on understanding statistical power, nonparametric methods, the Chi-squared test, estimators for categorical data (RD, RR, OR), the delta method and MLEs, methods for paired data, the issue of multiple comparisons, time permitting analysis of rates data and direct vs indirect adjustment, and introduction to Bayesian and Likelihoodist Inference. The objective of this quiz is to stir your memories on the topics you’ve likely seen before and to push for deeper thinking about statistical power (Type I and II error rates).
+
+
+ 
+## Q1)
+> In an experiment on internet performance, I perform a study with the following design. At the start of each day, I roll a die to determine if I will use the “new” router I borrowed from a friend to try out, my current “old” router, or plug in directly with the Ethernet cord. At the end of each day, I record whether I was satisfied or dissatisfied with my internet service that day.
+
+```
+              New  Oldt	Cord
+Dissatisfied	50   22	  25
+Satisfied	    110  90   100
+```
+
+> In mathematical terms, using Greek letters to represent parameters, what is the null hypothesis for a Chi-Squared test of this data?
+
+H0: Satisfaction is independent of connection type
+
+$$ \theta_a = \theta_b = \theta_c $$
+
+
+## Q2)
+> At a 5% significance level, what would be the rejection region for this test?
+
+$$ \chi^2 > 5.991 $$
+
+
+## Q3)
+> Under the null hypothesis, what is the expected number of dissatisfied days for the new router, i.e. when calculating the Chi-square test statistic, what would you use for the expected count “E” for the new router? 
+
+Using the combined values, we can calculated the expected count 'E' as the overall proportion:
+``` {r}
+data <- data.frame(new=c(50,110), old=c(22,90), cord=c(25,100))
+row.names(data)=c("dissatisfied","satisfied")
+
+x <- matrix(c(50,110,22,90,25,100), nrow=2)
+
+E <- sum(x[1,])/sum(x)
+
+```
+
+$$ E = \frac{`r sum(x[1,])`}{`r sum(x)`} = `r sum(x[1,])/sum(x)`$$
+
+
+> The following is output from a quick analysis of question 1's data using R.
+
+> The data 
+
+```
+> x <- matrix(c(50,110,22,90,25,100), nrow=2)
+> x
+     [,1] [,2] [,3]
+[1,]   50   22   25
+[2,]  110   90  100
+```
+
+> Comparing all three internet connection methods to each other
+
+```
+> chisq.test(x, correct=F)
+Pearson's Chi-squared test
+X-squared = 6.7494, df = 2, p-value = 0.03423
+```
+
+> Comparing the new router to the old router
+
+```
+> chisq.test( x[,c(1,2)] , correct=F)
+Pearson's Chi-squared test
+X-squared = 4.5603, df = 1, p-value = 0.03272
+```
+
+> Comparing the new router to the corded connection
+
+```
+> chisq.test( x[,c(1,3)] , correct=F)
+Pearson's Chi-squared test
+X-squared = 4.5804, df = 1, p-value = 0.03234
+```
+
+> Comparing the old router to the corded connection
+
+```
+> chisq.test( x[,c(2,3)] , correct=F)
+Pearson's Chi-squared test
+X-squared = 0.0047, df = 1, p-value = 0.9451
+```
+
+## Q4)
+> Using the analyses provided above, write the conclusion for your hypothesis test using a 5% Type I error rate. (For sake of time, do not include any confidence intervals in your conclusion.)
+
+At the 5% level of significance, we reject the null hypothesis, concluding instead that not all three connections produce the same satisfaction.
+
+
+
+## Q5)
+> The analysis above also tests all of the pairwise comparisons (new vs. old, new vs. cord, old vs. cord). Using a Bonferroni correction to ensure a Family-wise Type I error rate of 5%, write your conclusions from the pairwise analysis. (For sake of time, do not include any confidence intervals in your conclusions.)
+
+The Bonferroni correction divides the initial error rate of 5% by the total number of comparisons = 3, so $ \frac{5%}{3}=1.667% $
+
+## Q6)
+> Referring to the data in question 1, calculate the risk ratio for the risk of dissatisfaction using the new router vs. the old router.
+
+Risk ratio:
+$$ RR = \frac{ (\frac{50}{160}) }{ (\frac{22}{112})} = \frac{6100}{3520} = \frac{305}{173} = 1.591 $$
+
+
+## q7)
+> Calculate a 95% confidence interval for the odds ratio for the odds of dissatisfaction using the new router vs. the old router.
+
+```
+. cc mode satis
+                                                         Proportion
+                 |   Exposed   Unexposed  |      Total     Exposed
+-----------------+------------------------+------------------------
+           Cases |        50         110  |        160       0.3125
+        Controls |        22          90  |        112       0.1964
+-----------------+------------------------+------------------------
+           Total |        72         200  |        272       0.2647
+                 |                        |
+                 |      Point estimate    |    [95% Conf. Interval]
+                 |------------------------+------------------------
+      Odds ratio |         1.859504       |    1.014308    3.473132 
+> (exact)
+ Attr. frac. ex. |         .4622222       |    .0141058    .7120754 
+> (exact)
+ Attr. frac. pop |         .1444444       |
+                 +-------------------------------------------------
+                               chi2(1) =     4.56  Pr>chi2 = 0.0327
+
+
+```
+
+## Q8)
+> I repeated my original Comcast experiment that looked at the ping times (ms) for my old and new router connecting to servers in 12 different states. The data are below with a quick analysis in R to the right.
+
+
+``` {R}
+# read in the dataset, call it data
+data <- data.frame(new = c(8,7,7,5,6,6,7,8,11,12,10,21), old=c(6,6,5,6,5,5,5,10,8,8,7,19))
+row.names(data) <- c("Me","NY","PA","VA","TN","AR","OK","TX","NM","AZ","CA","AK")
+
+data
+
+```
+
+> Unequal Variance Two-Sample t-test
+
+```
+> with(data, t.test( New, Old, equal.var=F ) )
+Welch Two Sample t-test
+t = 0.8876, df = 21.812, p-value = 0.3844
+```
+
+> Two-sample Wilcoxon-Mann-Whitney Rank Sum test
+
+```
+> with(data, wilcox.test( New, Old, correct=F) )
+Wilcoxon rank sum test
+W = 98, p-value = 0.1282
+
+```
+
+> Calculate the exact two-sided p-value for a sign test on this dataset.
+
+
+
+
+http://www.r-tutor.com/elementary-statistics/non-parametric-methods/sign-test
+
+``` {r}
+
+# By R function
+binom.test(sum(data$new > data$old),nrow(data))
+
+# Or manually:
+(1-pbinom(9,12,0.5))*2
+
+
+```
+
+p-value: `r (1-pbinom(9,12,0.5))*2`
+
+
+
+## Q9)
+> Neither the unequal variance two-sample t-test or the two-sample Wilcoxon rank sum test shown above reject at a 5% significance level. Considering just these two tests and the sign test from question 7, which of the three tests would you recommend for this dataset and why?
+
+# TODO
+
+When the difference between the two is not significantly large, it is better to use the sign test.
+The sign test 
+
+
+ 
+	
+> 	I conducted a variation of the experiment in question 8 as follows. Using my old and new routers, I connected to each of my 200 favorite websites. Because I didn't have a way to measure exact connection times, I recorded whether the connection was fast enough to not be annoying to an impatient guy like me. Here are the results.
+			New Router	
+			Annoyed	Happy	
+	Old	Annoyed  	10	1	11
+	Router	Happy	8	181	189
+			          18	182	200
+  
+## Q10)
+> What is the name of the statistical test you would use to analyze this study?
+
+The McNemar test (per lecture 260)
+
+
+# Q11)
+> Calculate the exact two-sided p-value for the correct answer to question 10.
+
+
+
+```
+mcci 10 1 8 181
+
+                 | Controls               |
+Cases            |   Exposed   Unexposed  |      Total
+-----------------+------------------------+------------
+         Exposed |        10           1  |         11
+       Unexposed |         8         181  |        189
+-----------------+------------------------+------------
+           Total |        18         182  |        200
+
+McNemar's chi2(1) =      5.44    Prob > chi2 = 0.0196
+Exact McNemar significance probability       = 0.0391
+
+Proportion with factor
+        Cases           .055
+        Controls         .09     [95% Conf. Interval]
+                   ---------     --------------------
+        difference     -.035     -.0689965  -.0010035
+        ratio       .6111111      .4023865   .9281047
+        rel. diff. -.0384615     -.0713841   -.005539
+
+        odds ratio      .125      .0028171   .9323541   (exact)
+
+
+```
+
+## Q12)
+> Based just on the results of the experiment in question 10, what advice would you give me regarding which router I should use?
+
+You should use your old router, as there is a significant difference, and the old router had fewer annoyed websites.
+
+
+
+``` {r}
+# http://a-little-book-of-r-for-biomedical-statistics.readthedocs.org/en/latest/src/biomedicalstats.html#calculating-odds-ratios-for-a-cohort-or-case-control-study
+calcOddsRatio <- function(mymatrix,alpha=0.05,referencerow=2,quiet=FALSE)
+{
+   numrow <- nrow(mymatrix)
+   myrownames <- rownames(mymatrix)
+
+   for (i in 1:numrow)
+   {
+      rowname <- myrownames[i]
+      DiseaseUnexposed <- mymatrix[referencerow,1]
+      ControlUnexposed <- mymatrix[referencerow,2]
+      if (i != referencerow)
+      {
+         DiseaseExposed <- mymatrix[i,1]
+         ControlExposed <- mymatrix[i,2]
+
+         totExposed <- DiseaseExposed + ControlExposed
+         totUnexposed <- DiseaseUnexposed + ControlUnexposed
+
+         probDiseaseGivenExposed <- DiseaseExposed/totExposed
+         probDiseaseGivenUnexposed <- DiseaseUnexposed/totUnexposed
+         probControlGivenExposed <- ControlExposed/totExposed
+         probControlGivenUnexposed <- ControlUnexposed/totUnexposed
+
+         # calculate the odds ratio
+         oddsRatio <- (probDiseaseGivenExposed*probControlGivenUnexposed)/
+                      (probControlGivenExposed*probDiseaseGivenUnexposed)
+         if (quiet == FALSE)
+         {
+            print(paste("category =", rowname, ", odds ratio = ",oddsRatio))
+         }
+
+         # calculate a confidence interval
+         confidenceLevel <- (1 - alpha)*100
+         sigma <- sqrt((1/DiseaseExposed)+(1/ControlExposed)+
+                       (1/DiseaseUnexposed)+(1/ControlUnexposed))
+         # sigma is the standard error of our estimate of the log of the odds ratio
+         z <- qnorm(1-(alpha/2))
+         
+         lowervalue <- oddsRatio * exp(-z * sigma)
+         uppervalue <- oddsRatio * exp( z * sigma)
+         if (quiet == FALSE)
+         {
+            print(paste("category =", rowname, ", ", confidenceLevel,
+               "% confidence interval = [",lowervalue,",",uppervalue,"]"))
+         }
+      }
+   }
+   if (quiet == TRUE && numrow == 2) # If there are just two treatments (exposed/nonexposed)
+   {
+      return(oddsRatio)
+   }
+}
+```

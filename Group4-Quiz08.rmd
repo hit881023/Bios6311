@@ -1,0 +1,134 @@
+---
+title: "Quiz 08"
+author: "Group 4: Alex Chen, Lingjun Fu, Molly Olson, Nick Strayer"
+date: "November 10, 2015"
+output: html_document
+---
+ 
+## Qa)
+> What is the rate of rejection for PNT and INT when $\mu_p - \mu_d = 0$ ?
+
+```{r}
+library(ggplot2)
+a_PNT <- function(loops=10000, diff=0){
+    count = 0
+    for(i in 1:loops){
+        placebo <- rnorm(100, mean=diff, sd=10)
+        drug <- rnorm(100, mean=0, sd=10)
+        if(t.test(placebo, drug, var.equal = FALSE)$p.value < 0.05){
+            count = count + 1
+        }
+    }
+    return (count/loops)
+}
+aP = a_PNT()
+
+aP
+
+a_INT <- function(loops=10000, diff=0){
+    count = 0
+    diff_vec = seq(-1, 1, 0.1)    
+    for(i in 1:loops){
+        p_vec = rep(0, length(diff_vec))
+        placebo <- rnorm(100, mean=diff, sd=10)
+        drug <- rnorm(100, mean=0, sd=10)
+        for(j in seq(diff_vec)){  
+            p_vec[j] = t.test(placebo, drug,
+                              mu=diff_vec[j], var.equal = FALSE)$p.value         
+        }
+        p = max(p_vec)
+        if(p < 0.05){
+            count = count + 1
+        }
+    }
+    return (count/loops)
+}
+aI = a_INT()
+
+aI
+```
+
+## Qb)
+> What is the rate of rejection for PNT and INT when $\mu_p - \mu_d = 4$?
+
+```{r}
+bP = a_PNT(diff=4)
+bI = a_INT(diff=4)
+bP
+bI
+```
+
+
+## Qc)
+
+```{r}
+diff <- seq(-7,7,1)
+rej_PNT <- rep(0, length(diff))
+rej_INT <- rep(0, length(diff))
+for(i in seq(diff)){
+    rej_PNT[i] = a_PNT(diff=diff[i])
+    rej_INT[i] = a_INT(diff=diff[i])
+}
+plot(diff, rej_PNT, type='l', xlim=c(-7,7), ylim=c(0,1), main="rejection rate", xlab="true difference", ylab="rejection rate")
+lines(x=diff,y=rej_INT,col="blue")
+```
+
+## Qd)
+
+```{r}
+d_PNT <- function(loops=10000, diff=0){
+    p_vec <- rep(0, loops)
+    for(i in 1:loops){
+        placebo <- rnorm(100, mean=diff, sd=10)
+        drug <- rnorm(100, mean=0, sd=10)
+        p_vec[i] = t.test(placebo, drug, var.equal = FALSE)$p.value
+    }
+    return (p_vec)
+}
+
+d_INT <- function(loops=10000, diff=0){
+    p_vec <- rep(0, loops)
+    diff_vec = seq(-1, 1, 0.1)    
+    for(i in 1:loops){
+        placebo <- rnorm(100, mean=diff, sd=10)
+        drug <- rnorm(100, mean=0, sd=10)
+        p <- rep(0, length(diff_vec))
+        for(j in seq(diff_vec)){  
+            p[j] = t.test(placebo, drug,
+                              mu=diff_vec[j], var.equal = FALSE)$p.value         
+        }
+        p_vec[i] = max(p)
+    }
+    return (p_vec)
+}
+d_P = d_PNT()
+d_I = d_INT()
+
+hist(d_P, breaks=20, prob = TRUE)
+hist(d_I, breaks=20, prob = TRUE)
+
+
+```
+
+## Qe)
+
+```{r}
+e_P = d_PNT(diff=4)
+e_I = d_INT(diff=4)
+
+hist(e_P, breaks=20, prob = TRUE)
+
+hist(e_I, breaks=20, prob = TRUE)
+
+```
+
+## Qf)
+
+```{r}
+FDR_PNT = aP/(aP + bP)
+FDR_INT = aI/(aI + bI)
+FDR_PNT
+FDR_INT
+```
+
+## Qg)

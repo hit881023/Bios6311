@@ -1,0 +1,299 @@
+---
+title: "Bios 6311 Final Project"
+author: "Lingjun Fu"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: pdf_document
+graphics: yes
+---
+
+## Project Topic:
+
+Point Estimate and Confidence Interval
+
+## Motivation:
+
+Point estimation refers to the process of estimating a parameter of a probability distribution, based on one or a bunch of observed data from the distribution. It is one of the core topics in mathematical statistics. In general, point estimation should be contrasted with interval estimation. Bayesian inference is the foundation of point estimation. Basically, it trys to find a given parameter such that the probability of observing such data is maximized. For example, if one observes the value of normal distributed variable $x$ as $x_0$, the point estimation of the parameter $\mu$ is $x_0$ since it maximized the probability of observing a value of $x$ around $x_0$ (note that for continuous distribution the probability of observing a discrete value is zero). In contrast to point estimation, which is a single number, interval estimation is the use of sample data to calculate an interval of possible (or probable) values of an unknown population parameter. The confidence interval (CI) estimate is a range of likely values for the population parameter based on:
+\begin{itemize}
+\item the point estimate, e.g., the sample mean
+\item the investigator's desired level of confidence (most commonly 95\%)
+\item the sampling variability or the standard error of the point estimate
+\end{itemize}
+For example, a very important application of Central Limit Theorem we learned in the class is to derive a CI of population mean using the sample mean and standard error.
+
+It is usually easier to come up with a point estimation using the maximized likelihood method than claim a CI of desired level. However, a range is more meaningful than a single value in statistics. Moreover, the true recovery rate (RR) should be exactly equal to your claimed level (say, 95\%) ideally although it is often not the case in reality. For example, in the binomial case, we discussed three different intervals in the class: Wilson, exact, and asymptotic. The exact interval is the most conservative one and always has true RR higher than 95\%. The asymptotic interval behaves badly at extreme values of $p$. We see that it's really hard to get a CI which has the same RR as claimed all the time.
+
+In this project, we will extend the point estimation and its exact CI to more common distributions. Specifically, we will derive the most likely value of the characteristic parameter if exists and its exact CI. The idea to understand exact CI is to solve for a threshold value of the parameter that makes the observed value seem too big and another threshold value that makes the observed value seem too small. Mathematically, the goal is to solve two equations: $P(x \geqslant x_0|\rm{Bound1})=0.025$ and $P(x \leqslant x_0|\rm{Bound2})=0.025$. We emphasize that this method applies only when the CDF is a monotonical function of that parameter. Therefore, the two thresholds we find above are the boundaries of the CI. Also, we want to see how these CIs behave for different values of the paramters. Finally, inspired by Dr. Greevy's attemp to sacrifice the symmetry property, we want to see whether this would help to construct a better CI.
+
+We will focus on these common distributions: Poisson, uniform, geometric, and exponential. If time permitted, we want to address the issue of how to improve our CI using Binomial as an example. Based on the discussion with Dr. Greevy, a good CI should satisfy the following criteria:
+\begin{itemize}
+\item include the Maximized Likelihood Estimate (MLE), i.e. point estimate
+\item has a true RR as close to the claimed CI level as possible
+\item the CI is symmetric in the sense that we impose equal probability on both sides
+\item when the above three are fulfilled to the same extent, the CI with smaller width is the better.
+\end{itemize}
+
+## Poisson
+
+We conduct a test on poission interval whose CI is briefly discussed in the practice exam. From the plot, we see that the exact CI is conservative and its RR converges to 0.95 as $\lambda$ increases.
+
+```{r, eval=T}
+## find the CI for a given observation value. inspiration from practice exam
+pois_CI <- function(x){
+    LB = qchisq(0.025, 2*x)/2
+    UB = qchisq(0.975, 2*(x+1))/2
+    res = c(LB, UB)
+    return (res)
+}
+## find the true RR for a given value of lambda
+pois_cov <- function(lambda){
+    cov <- 0
+    i = 1
+    while(1){
+        LB = pois_CI(i)[1]
+        UB = pois_CI(i)[2]
+        if(LB <= lambda & UB >= lambda){
+            cov = cov + 1*dpois(i, lambda)
+        }
+        if(LB > lambda){
+            break
+        }
+        else{
+            i = i + 1
+        }
+    }
+    return (cov)
+}
+## test the true RR for lambda ranging from 1 to 1000
+lambda <- c(1:1000)
+pois <- sapply(lambda, function(x) pois_cov(x))
+plot(lambda, pois, type='l', xlim=c(1,1000), ylim=c(0.94,0.98), main="true recovery rate of Poisson distribution", xlab="lambda", ylab="coverage rate")
+lines(x=lambda,y=rep(0.95,length(lambda)),col="red")
+```
+
+## Uniform
+
+We use the convention that the PDF is: $f(x)=\frac 1 {b-a}$ and fix $a$ at 0. Then, we study that how the CI for $b$ performs given an observation $x_0$. In contrast to the Binomial and Poisson cases, the CI of $b$ here is oscillating around 0.95 and does not converge as b increases. Also, note that the point estimate for $b$ does not exist.
+
+```{r, eval=T}
+## find the CI for a given observation value
+unif_CI <- function(x){
+    res = c(x/0.975, x/0.025) ## solution for the boundary condition
+    return (res)
+}
+## find the true RR for a given value of b
+unif_cov <- function(b, sample_size = 1e4){
+    cov <- 0
+    sample <- runif(sample_size, 0, b) ## generate random samples
+    for(i in 1:sample_size){
+        CI = unif_CI(sample[i])
+        LB = CI[1]
+        UB = CI[2]
+        if(LB <= b & UB >= b){
+            cov = cov + 1/sample_size
+        }      
+    }
+    return (cov)
+}
+## test the true RR for b ranging from 1 to 1000
+b <- c(1:1000)
+unif <- sapply(b, function(x) unif_cov(x))
+plot(b, unif, type='l', xlim=c(1,1000), ylim=c(0.94,0.96), main="true recovery rate of uniform distribution", xlab="b", ylab="coverage rate")
+lines(x=b, y=rep(0.95,length(b)),col="red")
+```
+
+One might be surprised by the moderate performance of the CI for uniform distribution. After all, a single observation isn't really telling much as every value is equally likely. However, a naive but correct conclusion one can get from this observation is that $b$ must be larger than $x_0$. That said, there is still something to infer here. Indeed, this is a good example of how exact CI works. It puts bounds on the probability of being either larger or smaller than the observed value.
+
+## Geometric
+
+We choose the convention that the PDF is $f(x)=p(1-p)^{x-1}$ and CDF is $F(x)=1-(1-p)^x$. Solving the boundary equations, we get bounds for $p$: $\rm{LB}=1-0.975^{\frac 1 {x_0}}$ and $\rm{UB}=1-0.025^{\frac 1 {x_0-1}}$. Note that the point emtimate for $p$ is $\frac 1 {x_0}$.
+
+```{r}
+## find the CI for a given observation value
+geom_CI <- function(x){
+    if(x==1){
+        ## tricky point?
+        return (c(0.025, 1))
+    }
+    res = c(1-0.975^(1/x), 1-0.025^(1/(x-1))) ## solution for the boundary condition
+    return (res)
+}
+## find the true RR for a given value of p
+geom_cov <- function(p){
+    cov <- 0
+    i = 1
+    while(1){
+        LB = geom_CI(i)[1]
+        UB = geom_CI(i)[2]
+        if(LB <= p & UB >= p){
+            cov = cov + 1*p*(1-p)^(i-1)
+        }
+        if(UB < p){
+            ## stop the loop when UB decreses to a value less than p 
+            break
+        }
+        else{
+            i = i + 1
+        }
+    }
+    return (cov)
+}
+## test the true RR for p ranging from 0.01 to 0.99
+delta <- 0.01
+p <- seq(delta, 1-delta, delta)
+geom <- sapply(p, function(x) geom_cov(x))
+plot(p, geom, type='l', xlim=c(0,1), ylim=c(0.92,1), main="true recovery rate of geometric distribution", xlab="p", ylab="coverage rate")
+lines(x=p, y=rep(0.95,length(p)),col="red")
+```
+
+The plot of geometric distribution is quite distinct from other distributions we have discussed so far. It is similar as binomial in the sense that it is always conservative. It is unique with several spikes when $p$ is larger than 0.5. In general, the RR is quite stable (around 0.98) when $p$ is less than 0.5 and starts to oscillate (still larger than 0.98) beyond that range. We can understand it as a result of the fact that the up bound will most likely cover the true value of $p$ since it cannot go beyond 1. Therefore, the true RR tends to be closer to the claimed level when $p$ is small. A intuitive example might be: it is safer to say that the $p$ is small when you keep failing in a bunch of attempts rather than the $p$ is large when you succeed in the first attempt. In fact, you might just be extremely lucky even though $p$ is small.
+
+## Exponential
+
+We choose the convention that the PDF is $f(x)={\beta} e^{-\beta x}$ and CDF is $F(x)=1-e^{-\beta x}$. Solving the boundary equations, we get the bounds for $\beta$: $\rm{UB}=-\frac {\log 0.025} {x_0}$ and $\rm{LB}=-\frac {\log 0.975} {x_0}$. Note that the point estimation for $\beta$ is $\frac 1 {x_0}$.
+
+```{r}
+## find the CI for a given observation value
+exp_CI <- function(x){
+    res = c(-log(0.975)/x, -log(0.025)/x)
+    ## solution for the boundary condition
+    return (res)
+}
+## find the true RR for a given value of beta
+exp_cov <- function(beta, sample_size = 1e4){
+    cov <- 0
+    sample <- rexp(sample_size, beta) ## generate random samples
+    for(i in 1:sample_size){
+        CI = exp_CI(sample[i])
+        LB = CI[1]
+        UB = CI[2]
+        if(LB <= beta & UB >= beta){
+            cov = cov + 1
+        }      
+    }
+    return (cov/sample_size)
+}
+## test the true RR for beta ranging from 0.1 to 20
+delta <- 0.1
+beta <- seq(delta, 20, delta)
+exp <- sapply(beta, function(x) exp_cov(x))
+plot(beta, exp, type='l', xlim=c(0,20), ylim=c(0.94,0.96), main="true recovery rate of exponential distribution", xlab="beta", ylab="coverage rate")
+lines(x=beta, y=rep(0.95,length(beta)),col="red")
+```
+
+From the plot, we see that the true RR of exponential distribution oscillates around 0.95 and does not converge to 0.95 as $\beta$ increases. It is interesting that exponential distribution has the smallest oscillating range so far.
+
+## Short Summary
+
+We have done the simulations for four distributions so far: two discrete (Poisson and Geometric) and two continuous (Uniform and Exponential). For discrete cases, the exact CI is always conservative and has different performances for various values of the characteristic parameter. This is similar to the Binomial case which we have extensively studied in the class. The exact CI of Binomial has better performace when $p$ is close to 0.5. For continuous cases, the exact CI has a true RR oscillating around 0.95 regardless of the value of the characteristic parameter. In general, the true RR for continuous cases are closer to 0.95.  
+
+## Potential improvement of asymmetric CI for Binomial distribution?
+
+In the first midterm, we briefly discussed the potential impact on the performance of CI by sacrificing the symmetric property. We see that asymmetric CI is worse than exact CI when $\theta$ is intermediate and better when $\theta$ is close to 0 or 1. Now we want to see whether it is possible to achieve an universally better CI (for every $\theta$ ranging from 0 to 1) by introducing more changes.
+
+The approach we propose here is a modification of the $\alpha_1$ and $\alpha_2$. Rather than fixing it at constant values, we can set it as a function of the deviation of the observed sample proportion from 0.5. Or, we can modify the sample proportion range as the values of $\alpha_1$ and $\alpha_2$ change. This is a promising project we aim to dig in the near future if possible. The following codes is an example of our approach. Unfortunately, it does not grant an universally better CI. We expect to continue this work under the supervisory of Dr. Greevy.
+
+```{r, eval=F}
+Asy_CI <- function(i, n = 17){
+    ratio <- i/n
+    sp = 0.25 # sp = switch point
+    if(ratio >= sp && ratio <= 1-sp){
+        alpha_1 = 0.025
+    }
+    else if(ratio < sp){
+        alpha_1 = 0.05 # can modify it to a function
+    }
+    else{
+        alpha_1 = 0 # can modify it to a function
+    }
+    alpha_2 <- 0.05 - alpha_1
+    LB  <-  0
+    UB  <-  1
+    threshold <- 0.0001
+    step  <- 0.0001
+    while(LB < 1){
+        if(abs(pbinom(i-1, n, LB) - (1-alpha_1)) >= threshold){
+            LB = LB + step
+            }
+            else{
+                break
+            }
+        }
+    while(UB > 0){
+        if(abs(pbinom(i, n, UB) - alpha_2) >= threshold){
+            UB = UB - step
+            } 
+            else{
+                break
+            }
+        }
+    if(UB < 0){
+        UB = 1
+    }
+    if(LB > 1){
+        LB = 0
+    }
+    res12 <- c(LB, UB)
+    return (res12)
+}
+res12 <- Asy_CI(12)
+res12
+
+library(Hmisc)
+delta <- 0.01
+theta <- seq(delta, 1-delta, delta)
+
+Hmisc_cov <- function(n, methods, p){
+    cov <- 0
+    for(i in (0:n)){
+        tempCI <- binconf(i, n, alpha=0.05, method=methods)
+        if(tempCI[2] <= p & tempCI[3] >= p){
+            cov = cov + 1*dbinom(i, n, p)
+        }
+    }
+    return (cov)
+}
+
+Asy_cov <- function(p, n=17){
+    cov <- 0   
+    for(i in 0:n){
+        LB = Asy_CI(i)[1]
+        UB = Asy_CI(i)[2]
+        if(LB <= p & UB >= p){
+            cov = cov + 1*dbinom(i, n, p)
+        }   
+    }
+    return (cov)
+}
+
+
+Hmisc_cov_all <- function(p, methods, n=17){
+    cov_rate <- rep(0, length(p))
+    for(i in 1:length(p)){
+        cov_rate[i] <- Hmisc_cov(n, methods, p[i])
+    }  
+    return (cov_rate)
+}
+
+cov_ext <- Hmisc_cov_all(theta, "exact")
+cov_wil <- Hmisc_cov_all(theta, "wilson")
+
+# theta =seq(0.1,1,0.1)
+cov_asy <- rep(0, length(theta))
+for(i in 1:length(theta)){
+    cov_asy[i] <- Asy_cov(theta[i])
+}  
+
+#plot
+plot(theta, cov_asy, type='l', xlim=c(0,1), ylim=c(0.9,1), main="true recovery rate", xlab="theta", ylab="coverate rate",col="blue")
+lines(x=theta,y=cov_ext,col="green")
+lines(x=theta, y=cov_wil,col="red")
+lines(x=theta,y=rep(0.95,length(theta)),col="black")
+legend(0.4,0.93,c("asymmetric","exact","wilson"),lty=c(1,1,1),lwd=c(1,1,1),col=c("blue","green","red"), cex=0.4)
+```
+
+
+
+
+
+
+

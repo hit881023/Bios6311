@@ -1,0 +1,765 @@
+---
+title: "Midterm 1 Part 2"
+author: "Lingjun Fu"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: pdf_document
+graphics: yes
+---
+
+
+---
+
+## Question 1:
+
+**What is the span or support of S?**
+
+The support spans every integer from 3 to 42 (both inclusive).
+
+---
+
+## Question 2:
+
+**If rolling of all three dice, what is the probability of getting a sum of 3 on that roll, i.e. P(S=3)?**
+
+Since S=3 is the smallest possible value of S. This requires that: D10=D12=D20=1, hence $P=\frac {1} {10} * \frac {1} {12} * \frac {1} {20}=\frac {1} {2400}$.
+
+---
+
+## Question 3:
+
+**If rolling of all three dice, what is the probability of getting a sum of 21 on that roll given the twenty-sided landed on 18, i.e. P(S=21 | D20=18)?**
+
+$P(S=21|D20=18)=P(D10+D12=3)=P(D10=1 \cap D12=2)+P(D10=2 \cap D12=1)=\frac {1} {10} * \frac {1} {12} *2=\frac 1 {60}$.
+
+---
+
+## Question 4:
+
+**If holding an 18 on the twenty-sided die and rolling the other two dice, what is the probability of getting a sum of 21 on that roll, i.e. P(S=21 | D20 held at 18)?**
+
+This problem is essentially the same as Q03. The solution is the same. Indeed, this trivial but not obvious fact helps me a lot in Q14 when I try to match the simulation and theoretical results. 
+
+---
+
+## Question 5:
+
+**If rolling all three dice, what is the expectation of the dice sum, i.e. E[S]? Hint: If you think of S as D10+D12+D20, you don't need the probability mass function of S**
+
+I did this by hand in class. Now I want to run a code to check that.
+
+```{r}
+Q5 <- function(x, n=100000){  
+    return (sample(1:x, n, replace=T))
+}
+total <- Q5(10) + Q5(12) + Q5(20)
+res5_sm <- mean(total)
+res5_sm
+
+res5_th <- 22.5
+res5_th
+
+```
+
+The simulation result `r res5_sm` is very close to my theoretical result 22.5.
+
+---
+
+## Question 6:
+
+**If rolling of all three dice, what is the standard deviation of the dice sum, i.e. SD[S]? **
+
+I did this by hand in class. Now I want to run a code to check that.
+
+```{r}
+sum <- Q5(10, n=1000000) + Q5(12, n=1000000) + Q5(20, n=1000000)
+res6_sm <- sqrt(var(sum))
+res6_sm
+
+res6_th <- sqrt(sum(seq(1, 20)^2)/20 - (sum(seq(1, 20))/20)^2 +  
+sum(seq(1, 12)^2)/12 - (sum(seq(1, 12))/12)^2  +  
+sum(seq(1, 10)^2)/10 - (sum(seq(1, 10))/10)^2)
+res6_th
+```
+
+Since the convergence of standard deviation requires more iteration times. I choose n=1000000 here. The simulation result `r res6_sm` is very close to my theoretical result `r res6_th`.
+
+---
+
+## Question 7:
+
+**95% CI for strategy A**
+
+I calculated this by hand in class. Now I want to run a code to check that.
+
+```{r}
+mean = 20.31224
+se = 19.74028
+n = 17000
+LB_7 = mean - qnorm(0.975)*se/sqrt(n)
+UB_7 = mean + qnorm(0.975)*se/sqrt(n)
+LB_7
+UB_7
+```
+
+Since n=17000 is quite large here, it is justified by the central limit theorem to use the Z-score interval even though the distribution of the number of rolls is not normal. 
+
+---
+
+## Question 8:
+
+**95% CI for strategy B**
+
+I calculated this by hand in class. Now I want to run a code to check that.
+
+```{r}
+mean = 15.41176
+se = 20.29796
+n = 17
+LB_8 = mean - qt(0.975, n-1)*se/sqrt(n)
+UB_8 = mean + qt(0.975, n-1)*se/sqrt(n)
+LB_8
+UB_8
+###alternative
+data <- c(1,4,5,5,6,7,8,8,9,10,13,13,15,18,20,31,89)
+t.test(data)$conf.int
+```
+
+Since we only have 17 samples and the distribution of the data is not normal, it is more appropriate to use the t-score interval if we want to replace the population standard deviation by sample standard error.
+
+---
+
+## Question 9:
+
+**Referring to the data presented for strategy B in the previous question, calculate a 95% confidence interval expressed as (LB, UB) for the true median number of rolls to get a Dragon Jack using strategy B. Hint: you have not done this in any of our quizzes.**
+
+I did not know the part one is also open internet so I proposed the idea of inferring an CI for median based on the median of the 17 samples (9). However, after some searching online and reading Rosner's book, I find that one should base on the rank rather than the value.
+
+```{r}
+### method 1 based on the binomial
+### reference goes to Rosner's book
+alpha = 0.05
+x <- c(1,4,5,5,6,7,8,8,9,10,13,13,15,18,20,31,89)
+n = length(x)
+j = qbinom(alpha/2, n, 0.5)
+sort(x)[c(j, n+1-j)]
+
+# method 1 based on the rank
+# reference goes to:  
+#https://epilab.ich.ucl.ac.uk/coursematerial/statistics/non_parametric/confidence_interval.html
+low_rank = round(n/2-1.96*sqrt(n)/2, 0)
+up_rank = round(1+n/2+1.96*sqrt(n)/2, 0)
+x[c(low_rank, up_rank)]
+```
+
+The above two methods have slightly different results. The lesson is to focus more on the rank rather than the value itself. My approach in part one is value based which tends to have wider CI due to the affection of large numbers. 
+
+---
+
+## Question 10:
+
+**When creating the data for strategy B, I played versus strategy A and found that B won 12 out of the 17 games. Calculate a 95% confidence interval expressed as (LB, UB) for the probability of strategy B beating A using a Wilson interval.**
+
+I calculated this in class using the plus four method. Now I use the Hmisc package to redo it.
+
+```{r}
+library(Hmisc)
+x <- binconf(12, 17, alpha=0.05, method="wilson")
+LB_10 <- x[2]
+UB_10 <- x[3]
+LB_10
+UB_10
+```
+
+
+---
+
+## Question 11:
+
+**Suppose I wrote code for strategy B and played B vs A for one million games. Since ties are possible, I'll calculate the probability of B strictly winning (not losing or tieing). How would the 95% asymptotic Normal (Wald) interval for the probability of B winning compare to the Wilson and Exact intervals in terms of coverage and interval width?**
+
+When we have one million samples, the coverage rate of all three intervals are quite stable most of the time. In this case, the probability of B strictly winning is not much deviated from 0.5 (actually it's around 0.55 as checked by my later simulation). Therefore, the Exact interval still has the largest interval width and true coverage rate above 95%. Both of Wald and Wilson interval have similar coverage rate slightly below 95%. In other words, normal approximation applies well to this distribution since $np>5$ and $n(1-p)>5$.
+
+---
+
+## Question 12:
+
+**Asymmetric 95% exact CI**
+
+I did this by replicating calculating cdf and choosing the LB and UB which make the cdf closest to 0.99 and 0.04 respectively. Now I want to run a iteration loop to find the precise bound. 
+
+```{r}
+Q12 <- function(i, n=17){
+    LB  <-  0
+    UB  <-  1
+    threshold <- 0.0001
+    step  <- 0.0001
+    while(LB < 1){
+        if(abs(pbinom(i-1, n, LB) - 0.99) >= threshold){
+            LB = LB + step
+            }
+            else{
+                break
+            }
+        }
+    while(UB > 0){
+        if(abs(pbinom(i, n, UB) - 0.04) >= threshold){
+            UB = UB - step
+            } 
+            else{
+                break
+            }
+        }
+    if(UB < 0){
+        UB = 1
+    }
+    if(LB > 1){
+        LB = 0
+    }
+    res12 <- c(LB, UB)
+    return (res12)
+}
+res12 <- Q12(12)
+LB_12 <- res12[1]
+UB_12 <- res12[2]
+LB_12
+UB_12
+```
+
+Note that the I conduct my search by decreasing the UB from 1 and increasing LB from 0, both at the step of 0.001. I pick the first values satisfying the resolution I set (also 0.001). The LB is `r LB_12` and the UB is `r UB_12`.
+
+---
+
+## Question 13:
+
+**Fix n = 17 and vary theta, i.e. let X ~ Bin(17, theta). Create a plot of coverage rate by theta for theta in (0, 1) for the following three 95% CI methods (Wilson, Symmetric Exact, and the proposed Asymmetric Exact). Take a fine gradation of theta, e.g. delta <- 0.001; theta <-seq(delta,1-delta,delta);. Describe the relative performance of the methods. State which interval method would you pick for this setting of a small n and unknown theta and explain why you picked that method.**
+
+In part one, I didn't have time to finish the code for the asymmetric interval.
+
+```{r}
+delta <- 0.001
+theta <- seq(delta, 1-delta, delta)
+
+Hmisc_cov <- function(n, methods, p){
+    cov <- 0
+    for(i in (0:n)){
+        tempCI <- binconf(i, n, alpha=0.05, method=methods)
+        if(tempCI[2] <= p & tempCI[3] >= p){
+            cov = cov + 1*dbinom(i, n, p)
+        }
+    }
+    return (cov)
+}
+
+Asy_cov <- function(p, n=17){
+    cov <- 0
+    for(i in 0:floor(n/2)){
+        LB  <-  0
+        UB  <-  1
+        threshold <- 0.001
+        while(LB < 1){
+            if(abs(pbinom(i-1, n, LB) - 0.96) >= threshold){
+                LB = LB + 0.001
+            }
+            else{
+                break
+            }
+        }
+        while(UB > 0){
+            if(abs(pbinom(i, n, UB) - 0.01) >= threshold){
+                UB = UB - 0.001
+            } 
+            else{
+                break
+            }
+        }
+        if(UB < 0){
+            UB = 1
+        }
+        if(LB > 1){
+            LB =0
+        }
+        if(LB <= p & UB >= p){
+            cov = cov + 1*dbinom(i, n, p)
+        }   
+    }
+    for(j in ceil(n/2):n){
+        LB  <-  0
+        UB  <-  1
+        threshold <- 0.001
+        while(LB < 1){
+            if(abs(pbinom(j-1, n, LB) - 0.99) >= threshold){
+                LB = LB + 0.001
+            }
+            else{
+                break
+            }
+        }
+        while(UB > 0){
+            if(abs(pbinom(j, n, UB) - 0.04) >= threshold){
+                UB = UB - 0.001
+            } 
+            else{
+                break
+            }
+        }
+        if(UB < 0){
+            UB = 1
+        }
+        if(LB > 1){
+            LB = 0
+        }
+        if(LB <= p & UB >= p){
+            cov = cov + 1*dbinom(j, n, p)
+        }   
+    }
+    return (cov)
+}
+
+Hmisc_cov_all <- function(p, methods, n=17){
+    cov_rate <- rep(0, length(p))
+    for(i in 1:length(p)){
+        cov_rate[i] <- Hmisc_cov(n, methods, p[i])
+    }  
+    return (cov_rate)
+}
+
+cov_ext <- Hmisc_cov_all(theta, "exact")
+cov_wil <- Hmisc_cov_all(theta, "wilson")
+
+cov_asy <- rep(0, length(theta))
+for(i in 1:length(theta)){
+    cov_asy[i] <- Asy_cov(theta[i])
+}  
+plot(theta, cov_asy, type='l', xlim=c(0,1), ylim=c(0.9,1), main="true coverage rate", xlab="theta", ylab="coverate rate")
+lines(x=theta,y=cov_ext,col="blue")
+lines(x=theta, y=cov_wil,col="green")
+lines(x=theta,y=rep(0.95,length(theta)),col="red")
+legend(0.43,0.92,c("asymmetric","symmetric","wilson"),lty=c(1,1,1),lwd=c(1,1,1),col=c("black","blue","green"), cex=0.45)
+```
+
+The coverage rate plot shows that all three intervals have true cover rate between 90% and 100%. The black, blue and green lines represent the asymmetric, symmetric exact and Wilson respectively. The asymmetric interval has worst performance when theta is close to 0.5 and median performance when theta is deviated from 0.5. The exact interval always has cover rate larger than 95%. The Wilson interval has cover rate oscillating around 95% and has some bad performance when theta is close to 0 or 1. For small n and unknown theta, I would pick the Wilson interval because its coverage rate is close to 0.95 most of the time. I note that the asymmetric interval is not appropriate when theta is around 0.5 while the exact symmetric interval is not appropriate when theta is close to 0 or 1.
+
+---
+
+## Question 14:
+
+**Propose your own Dragon Jacks strategy C. Prove that your strategy beats strategy A and if possible strategy B. Note the word “prove” is left intentionally ambiguous. Make a convincing case.**
+
+Let's implement the simulation code for strategy A and B to get a taste of the game first.
+
+```{r}
+S10 <- c(1:10)
+S12 <- c(1:12)
+S20 <- c(1:20)
+### use simulation to generate data samples, F for different strategy  
+### function
+gen_data <- function(F, n=1e5){
+    res <- rep(0, n)
+    for(i in 1:n){
+        res[i] = F()
+    }
+    return (res)
+}
+
+### strategy A simulation
+S_A <- function(){
+    count <- 1
+    temp10 <- sample(S10, 1)
+    temp12 <- sample(S12, 1)
+    temp20 <- sample(S20, 1)
+    while(temp10 + temp12 + temp20 != 21){
+        count = count + 1
+        temp10 <- sample(S10, 1)
+        temp12 <- sample(S12, 1)
+        temp20 <- sample(S20, 1)  
+    }
+    return (count)   
+}
+A_num <- gen_data(S_A)
+mean(A_num)
+hist(A_num, breaks=seq(0,2*(ceiling(max(A_num)/2)+1),by=2), freq=F)
+
+### strategy B simulation
+S_B <- function(){
+    count <- 1
+    temp10 <- sample(S10, 1)
+    temp12 <- sample(S12, 1)
+    temp20 <- sample(S20, 1)
+    while(temp10 + temp12 + temp20 != 21){
+        if(temp20 > 15 | temp20 < 5){
+            temp10 <- sample(S10, 1)
+            temp12 <- sample(S12, 1)
+            temp20 <- sample(S20, 1)
+            count = count + 1
+            next
+        }
+        else{
+            goal = 21 - temp20
+            while(temp10 + temp12 != goal){
+                temp10 <- sample(S10, 1)
+                temp12 <- sample(S12, 1)
+                count = count + 1
+            }
+            return (count)
+        }
+    }
+    return (count)   
+}
+B_num <- gen_data(S_B)
+mean(B_num)
+hist(B_num, breaks=seq(0,2*(ceiling(max(B_num)/2)+1),by=2), freq=F)
+
+```
+
+In the spirit of banking one dice in the first step and then keep rolling the left two dices, I consider a potential good strategy which consists two steps. The first step is to find a dice (can be D10, D12, or D20) whose result satisfies some criteria and then bank it. The second step is to keep rolling the left two dices until the sum equals to the remained value (21 minus the first banking value). Assuming the probability of satisfying the criteria in one roll in step 1 is $P_1$ and the probability of satisfying the criteria in one roll in step 2 is $P_2$. The expected number of rollings in each step is a geometry series: $E_1=\frac 1 {P_1}$ and $E_2=\frac 1 {P_2}$. Note that our goal is to minimize $E=E_1+E_2$ and $E_1$ and $E_2$ is not independent. Also, keep in mind that once the criteria in step 1 is specified (e.g. strategy B picks 5<=D20<=15), both $P_1$ and $P_2$ will be determined. Hence the expected number of rollings. Therefore, our goal is to find a best strategy in step 1. Our method is to vary which dice to bank and what criteria to bank it in step 1.
+
+
+First, let's discuss the similar choice as strategy B but different criteria: $x\leqslant D20 \leqslant 20-x$, where $1\leqslant x \leqslant 10$. Note that in strategy B $x=5$.
+
+```{r}
+### construct function to calculate the probability of getting a target  
+### sum when rolling two dice: m and n
+prob_binom <- function(m, n, target){ 
+    # m is not equal to n in this problem
+    min = min(m, n)
+    max = max(m, n)
+    if(target > m + n | target < 2){
+        return (0)
+    }
+    else if(target <= min){
+        return ((target-1)/(m*n))
+    }
+    else if(target <= max+1){
+        return (min/(m*n))
+    }
+    else{
+        return ((max+min+1-target)/(m*n))
+    }
+}
+
+### construct function to calculate the probability of getting a target  
+### sum when rolling three dices: m, n, k
+prob_trinom <- function(m, n, k, target){
+    p <- 0
+    temp <- c(m, n, k)
+    temp <- sort(temp)
+    n1 <- temp[1]
+    n2 <- temp[2]
+    n3 <- temp[3]
+    for(i in (1:n3)){
+        p = p + 1/n3*prob_binom(n1, n2, target-i)
+    }
+    return (p)
+}
+
+### Byproduct: easily calculate E for strategy A
+E_A = 1/prob_trinom(10, 12, 20, 21)   ### 1/0.04875=20.513
+E_A
+```
+
+With the above two helper functions, let's proceed to use probability knowledge to evaluate the performance of different strategies.
+
+```{r}
+########## Strategy C with holding D20
+### for a particular set of x, calculate E
+E_1_bank_D20 <- function(x){
+    # x is the creteria
+    p1 <- (21-2*x)/20
+    return (1/p1)
+}
+
+E_2_bank_D20 <- function(y){
+    # y is the value of D20 we banked in step 1
+    # y is a number ranging from x to 20-x
+    remain <- 21 - y
+    p2 <- prob_binom(10, 12, remain)
+    return (1/p2)
+}
+
+E_total_bank_D20 <- function(x){
+    E1 <- E_1_bank_D20(x)
+    E2 <- 0
+    for(y in (x:(20-x))){
+        E2 = E2 + E_2_bank_D20(y)/(21-2*x)
+        # need to consider y has (21-2*x) possible values. Each value  
+        # has the same probability.
+    }
+    E_total = E1 + E2
+    return (E_total)
+}
+
+### easily calculate E for strategy B
+E_B = E_total_bank_D20(5)
+
+### plot E for different criteria in terms of x
+E_bank_D20 <- rep(0, length(1:10))
+for(i in seq(E_bank_D20)){
+    E_bank_D20[i] = E_total_bank_D20(i)
+}
+plot(1:10, E_bank_D20, type='p', xlim=c(1,10), ylim=c(10,40), main="expected number of rollings when holding a D20 ranging from x to 20-x")
+```
+
+In the above plot, x=5 point corresponds to strategy B. One can see that x=6,7,8 has slightly smaller y values (expected number of rollings to get 21). That said, simply by slightly changing the criteria of holding D20 in strategy B, I have generated several candidates for strategy C. All of the three C versions beats A and are at least as good as B.
+
+Next, let's see what if we choose to hold D12 or D10.
+
+```{r}
+########## Strategy D with holding D12
+### for a particular x, calculate E, 1<=x<=6
+E_1_bank_D12 <- function(x){
+    # x is the creteria
+    p1 <- (13-2*x)/12
+    return (1/p1)
+}
+
+E_2_bank_D12 <- function(y){
+    # y is the value of D12 we banked in step 1
+    # y is a number ranging from x to 12-x
+    remain <- 21 - y
+    p2 <- prob_binom(10, 20, remain)
+    return (1/p2)
+}
+
+E_total_bank_D12 <- function(x){
+    E1 <- E_1_bank_D12(x)
+    E2 <- 0
+    for(y in (x:(12-x))){
+        E2 = E2 + E_2_bank_D12(y)/(13-2*x)
+        # need to consider y has (13-2*x) possible values. Each value  
+        # has the same probability.
+    }
+    E_total = E1 + E2
+    return (E_total)
+}
+
+### plot E for different criteria in terms of x
+E_bank_D12 <- rep(0, length(1:6))
+for(i in seq(E_bank_D12)){
+    E_bank_D12[i] = E_total_bank_D12(i)
+}
+plot(1:6, E_bank_D12, type='p', xlim=c(1,6), ylim=c(10,40), main="expected number of rollings when holding a D12 ranging from x to 12-x")
+
+
+########## Strategy E theory with holding D10
+### for a particular x, calculate E, 1<=x<=5
+E_1_bank_D10 <- function(x){
+    # x is the creteria
+    p1 <- (11-2*x)/10
+    return (1/p1)
+}
+
+E_2_bank_D10 <- function(y){
+    # y is the value of D10 we banked in step 1
+    # y is a number ranging from x to 10-x
+    remain <- 21 - y
+    p2 <- prob_binom(12, 20, remain)
+    return (1/p2)
+}
+
+E_total_bank_D10 <- function(x){
+    E1 <- E_1_bank_D10(x)
+    E2 <- 0
+    for(y in (x:(10-x))){
+        E2 = E2 + E_2_bank_D10(y)/(11-2*x)
+        # need to consider y has (13-2*x) possible values. Each value  
+        # has the same probability.
+    }
+    E_total = E1 + E2
+    return (E_total)
+}
+
+### plot E for different criteria in terms of x
+E_bank_D10 <- rep(0, length(1:5))
+for(i in seq(E_bank_D10)){
+    E_bank_D10[i] = E_total_bank_D10(i)
+}
+plot(1:5, E_bank_D10, type='p', xlim=c(1,5), ylim=c(1,40), main="expected number of rollings when holding a D10 ranging from x to 10-x")
+```
+
+The performance of strategy D and E are close to A. I conclude that: if one wants to optimize his strategy by holding one dice and then rolling the left two, it is better to hold D20 rather than D12 or D10. A intuitive explanation for this might be: one should try to make the range of the sum of the left two dices as small as possible. Therefore, hold D20 and then keep rolling D10 and D12. 
+
+Next, let's see what will happen if we choose to hold two dices in the first step.
+
+```{r}
+######################################
+########## what about holding two dices in the first step
+########## Strategy F theory with holding D10 and D20
+### 
+p1 <- 0
+for(i in (9:20)){
+    p1 = p1 + prob_binom(10, 20, i) 
+}
+1/p1+12 ### 13.7094
+
+########## Strategy G theory with holding D10 and D12
+### 
+p2 <- 0
+for(i in (1:20)){
+    p2 = p2 + prob_binom(10, 12, i) 
+}
+1/p2 + 20 ### 21.02564
+
+########## Strategy H theory with holding D12 and D20
+### 
+p3 <- 0
+for(i in (11:20)){
+    p3 = p3 + prob_binom(12, 20, i) 
+}
+1/p3 + 10 ### 12.05128, best strategy so far!
+
+### Strategy H simulation with holding D12 and D20
+S_H <- function(){
+    count <- 1
+    temp10 <- sample(S10, 1)
+    temp12 <- sample(S12, 1)
+    temp20 <- sample(S20, 1)
+    while(temp10 + temp12 + temp20 != 21){
+        if((temp12 + temp20 < 11) | (temp12 + temp20 > 20)){
+            temp10 <- sample(S10, 1)
+            temp12 <- sample(S12, 1)
+            temp20 <- sample(S20, 1)
+            count = count + 1
+            next
+        }
+        else{
+            goal = 21 - temp20 - temp12
+            while(temp10 != goal){
+                temp10 <- sample(S10, 1)
+                count = count + 1
+            }
+            return (count)
+        }
+    }
+    return (count)   
+}
+H_num <- gen_data(S_H)
+mean(H_num)
+hist(H_num, breaks=seq(0,2*(ceiling(max(H_num)/2)+1),by=2), freq=F)
+t.test(B_num, H_num, var.equal=F)
+sum(H_num < B_num)/length(H_num)
+sum(H_num < A_num)/length(H_num)
+```
+
+In summary, I find that the expected numbers of rolling to get 21 can be calculated in theory: they are 20.513 for strategy A and 17.359 for strategy B. One can slightly modify strategy B to get a strategy C which still beats A and slightly beats B. For example, we can modify the range to hold D20 in B from [5,15] to any of the three intervals: [6, 14], [7,13], [8,12].
+
+Significantly improved strategy I find is to change from holding one dice to holding two dices. For example, if we choose to hold D10 and D20 or D12 and D20, the expected rolling numbers are reduced to 13.709 and 12.051 respectively. To double check my result, I run a simulation to generate large samples following strategy H (best one). The t.test result clearly shows that H beats B. Alternatively, one can also check how many times H is faster to get 21 (i.e. smaller number of rollings) by comparing the elements in H_num and B_num vector. In 1e5 times of simulation, H strictly wins B more than 55% of the time and wins A more than 60% of the time. 
+
+For strategy A, B and H, I run simulations to check my theoretical results. They match well for A. In B and H, however, the theoretical results are larger than the simulation results nearly by 1. The reason is that in my theoretical calculation for B and H, I ignore all the cases of getting a three-sum of 21 before holding one or two dices. That said, the performances of strategy B and H can be even better in practice. In fact, inspired by question 3 and 4, I realize that the probability of getting a sum of 21 in one roll of three dices given two dices landed on particular values is equal to the probability of getting a sum of 21 in a roll when holding two dices with particular values. While my theoretical formula is $E_1+E_2$, the true formula should be $0.1*E_1+(0.9*E_1+0.9*E_2)=E_1+0.9E_2$ since there is a 10% probability that we dont't need to proceed to step 2. Therefore, the theoretical results calculated for strategy H should minus $0.1E_2=1$ in order to account for the fact that the last roll in step 2 is a "proxy" of the roll that gets a 3-sum of 21 in step 1. With that said, I justify that my theoretical results match simulations quite well.
+
+The best strategy I propose is: **if D20+D12<11 or D20+D12>20, reroll all three dices; if D20+D12 falls in the range [11,20], hold these two dices and keep rerolling D10 until the three dices add up to 21**. As for the number of rollings, this strategy has a mean value of 11.051 and standard deviation of 9.627.
+
+Finally, let's intentionally strictly **prove** that my strategy H is the best one! As I have argued, it is the best static strategy if we stick to the strategy we pick in the beginning and only care about whether the outcome of a roll satisfies a single criteria or not. What if we become flexible and dynamically adjust our strategy with different outcomes? The idea is to always pick the most appropriate one rather than choose the unique one. Let's think about the first roll after which we have two choices: take action (holding one or two dices) or not (holding no dice). If we do not take action and reroll the three dices again, the smallest expected number of future rollings is 11.051 because this is just a replication of the first roll. Therefore, we should take action when and only when we see a particular outcome of the first roll such that the expected number of future rollings is less than 11.051 if we take action. So the question now is whether such outcome(s) exist or not? Now let's discuss it in two categories: hold one dice versus hold two dices. If we choose to hold two dices, the most optimistic scenario we can imagine is we hold D12 and D20, and then the expected number of rolling D10 to get a value of (21-D12-D20) is 10. This is exactly the same as strategy H. If we choose to hold one dice, we have three choices: D10, D12, and D20. For D10, the most optimistic scenario is that we need to get D12+D20=x such that prob_binom(12, 20, x) is maximized. The largest possible value of prob_binom(12, 20, x) is 0.05 which corresponds to an expected number of future rolling of 20. We reject it since 20 is larger than 11.051. For D12, the most optimistic scenario is that we need to get D10+D20=x such that prob_binom(10, 20, x) is maximized. The largest possible value of prob_binom(10, 20, x) is 0.05 which corresponds to an expected number of future rolling of 20. We reject it again since 20 is larger than 11.051. For D20, the most optimistic scenario is that we need to get D10+D12=x such that prob_binom(10, 12, x) is maximized. The largest possible value of prob_binom(10, 12, x) is 0.083 which corresponds to an expected number of future rolling of 12. We reject it since 12 is larger than 11.051.
+
+---
+
+```{r}
+S <- function(){
+    count <- 1
+    temp10 <- sample(S10, 1)
+    temp12 <- sample(S12, 1)
+    temp20 <- sample(S20, 1)
+    while(temp10 + temp12 + temp20 != 21){
+        count = count + 1        
+        if((temp12 + temp20 >= 11) && (temp12 + temp20 <= 20)){
+            temp10 = sample(S10, 1)
+        }   
+        else if((temp10 + temp20 >= 9) && (temp10 + temp20 <= 20)){
+            temp12 = sample(S12, 1)
+        }
+        else if((temp20 >= 4) && (temp20 <= 16)){
+            temp10 = sample(S10, 1)
+            temp12 = sample(S12, 1)
+        }
+        else{
+            temp10 = sample(S10, 1)
+            temp12 = sample(S12, 1)
+            temp20 = sample(S20, 1)
+        }
+    } 
+    return (count)
+}
+S_num <- gen_data(S)
+mean(S_num)
+
+x=rep(0, 5)
+for(i in seq(x)){
+    x[i] = mean(gen_data(S))
+}
+x
+
+sum(S_num < B_num)/length(B_num)
+sum(S_num < H_num)/length(B_num)
+
+
+
+
+
+
+######
+##########    Nick
+######
+
+#Function to simulate the dice. E.g. D10 = dice(10)
+dice <- function(n = 10) sample(seq(1,n), 1)
+
+#A function simulating a roll. 
+#If the value for a given dice is 0, the function will roll that dice. 
+roll <- function(d10 = 0, d12 = 0, d20 = 0){
+  d10 <- ifelse(d10 == 0, dice(10), d10)
+  d12 <- ifelse(d12 == 0, dice(12), d12)
+  d20 <- ifelse(d20 == 0, dice(20), d20)
+  return(c(d10, d12, d20))
+}
+
+playIt <- function(d10 = 0,d12 = 0,d20 = 0,count = 1, strategy = "a"){
+  
+  r <- roll(d10,d12,d20) #Roll the dice, holding the specified dice. 
+#   print(r) #uncomment to debug.
+  if(sum(r) != 21){ #If we didn't win, roll again, put heuristics in this step.  
+    
+    if(strategy == "a"){
+      #Do nothing. 
+    } else if(strategy == "b"){ 
+      #Strategy b
+      if(r[3] <= 15 && r[3] >= 5) d20 = r[3] #if d20 in [5,15] keep it.
+      
+    } else if (strategy == "c"){ 
+      #Strategy c
+      #Since the 10 sided is most predicatable, hold if the sum of the other two is in it's S
+      if((r[2] + r[3]) >= 11 && (r[2] + r[3]) <= 20){ 
+        d12 = r[2]
+        d20 = r[3]
+      }
+    } else {
+       #Strategy d
+      if((r[3] >= 7) && (r[3] <= 13)){
+         d10 = 0
+         d12 = 0
+         d20 = r[3]
+      }
+      if((r[1] + r[3]) > 8 && (r[1] + r[3]) < 21){ #if d10 + d20 is in the range of the d12, keep em'
+        d10 = r[1]
+        d12 = 0 #reroll d12
+        d20 = r[3]
+      }
+      if((r[2] + r[3]) > 10 && (r[2] + r[3]) < 21){ #but if d12 + d20 is in the range of the d10 that's even better.   
+        d10 = 0 #reroll d10
+        d12 = r[2]
+        d20 = r[3]
+      }
+    }
+   
+    #Roll the dice again. 
+    playIt(d10 = d10,d12 = d12,d20 = d20, count = count + 1, strategy = strategy) 
+  } else { #We've won, return the count. 
+    return(list(count = count, lastRoll = r))
+  }
+}
+
+stratD = replicate(n, playIt(strategy = "d")$count)
+summary(stratD)
+```
+
+
+
+
